@@ -1,0 +1,49 @@
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+main {
+    display: flex;
+    flex-direction: row;
+    font-family: system-ui;
+
+    height: 100%;
+    padding: 5px;
+
+    background-color: #272727;
+    color: #eeeeee;
+
+    > fieldset {
+        border-radius: 2px;
+
+        &#host { flex: 2.5; }
+        &#receive { flex: 1; }
+
+        > div {
+            height: 100%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+    }
+}
+
+/* vertical layout */
+@media screen and (max-width: 700px) {
+    main {
+        flex-direction: column;
+    }
+}
+
+#open-folder {
+    text-decoration: underline;
+    cursor: pointer;
+}
