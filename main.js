@@ -95,5 +95,7 @@ const server = Bun.serve({
         },
 
         perMessageDeflate: true
-    }
+    },
+
+    port: 2002
 });
