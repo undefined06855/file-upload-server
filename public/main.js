@@ -73,33 +73,44 @@ window.addEventListener("drop", async event => {
     // now identify as a host, upload file
     socket.close();
     socket = new WebSocket("ws/host");
+    
+    /** @type {Record<string, ArrayBuffer} */
+    let files = {};
+
+    socket.addEventListener("open", async () => {
+        sendData(files);
+    });
 
     // we cant just use event.dataTransfer.files in the callback because it just
     // disappears ??
     // so we need to manually copy beforehand
 
-    /** @type {Record<string, ArrayBuffer} */
-    let files = {};
-
+    let tempFiles = {};
     for (let file of Array.from(event.dataTransfer.files)) {
         let data = (await new Blob([file]).arrayBuffer()).transfer();
-        files[file.name] = data;
+        tempFiles[file.name] = data;
     }
-    
-    console.log(files);
+    files = tempFiles;
 
-    socket.addEventListener("open", async () => {
-        console.log(files);
-        for (let [filename, data] of Object.entries(files)) {
-            let offset = 0;
-            let length = 5e6; // 5MB at a time
-
-            while (offset < data.byteLength) {
-                console.log("sending chunk from %s", offset);
-                const slice = data.slice(offset, offset + length);
-                socket.send(`${filename}|${data.byteLength}|${new Uint8Array(slice).toString()}`);
-                offset += length;
-            }
-        }
-    });
+    sendData(files);
 });
+
+let filesSent = [];
+
+function sendData(files) {
+    console.log(files);
+    for (let [filename, data] of Object.entries(files)) {
+        let offset = 0;
+        let length = 5e6; // 5MB at a time
+
+        if (filesSent.includes(filename)) continue;
+        filesSent.push(filename);
+
+        while (offset < data.byteLength) {
+            console.log("sending chunk from %s", offset);
+            const slice = data.slice(offset, offset + length);
+            socket.send(`${filename}|${data.byteLength}|${new Uint8Array(slice).toString()}`);
+            offset += length;
+        }
+    }
+}
