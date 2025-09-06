@@ -2,22 +2,18 @@ let socket = new WebSocket("ws/receiver");
 
 class PartialFile {
     constructor(filename, length) {
-        this._data = "";
+        this.data = new Uint8Array(length);
         this.filename = filename;
         this.written = 0;
     }
 
     write(data) {
-        this._data += data;
+        this.data.set(new TextEncoder().encode(data), this.written);
         this.written += actualData.length;
     }
 
     get done() {
-        return this.written == this._data.length;
-    }
-
-    get data() {
-        return decode(this._data);
+        return this.written == this.data.length;
     }
 };
 
@@ -40,7 +36,7 @@ socket.addEventListener("message", event => {
 
         default: {
             // file data
-            let [name, length, data] = text.split("|");
+            let [name, length, ...data] = text.split("|");
             console.log("receive file data chunk %s (len: %s)", name, length);
 
             console.log(name in files);
@@ -91,7 +87,7 @@ window.addEventListener("drop", async event => {
     let tempFiles = {};
     for (let file of Array.from(event.dataTransfer.files)) {
         let data = (await new Blob([file]).arrayBuffer()).transfer();
-        tempFiles[file.name] = encode(data);
+        tempFiles[file.name] = data;
     }
     files = tempFiles;
 
@@ -112,7 +108,7 @@ function sendData(files) {
         while (offset < data.length) {
             console.log("sending chunk from %s", offset);
             const slice = data.slice(offset, offset + length);
-            socket.send(`${filename}|${data.byteLength}|${slice}`);
+            socket.send(`${filename}|${data.byteLength}|${new TextDecoder().decode(slice)}`);
             offset += length;
         }
     }
