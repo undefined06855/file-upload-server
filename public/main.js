@@ -2,19 +2,22 @@ let socket = new WebSocket("ws/receiver");
 
 class PartialFile {
     constructor(filename, length) {
-        this.data = new Uint8Array(length);
+        this._data = "";
         this.filename = filename;
-        this.offset = 0;
+        this.written = 0;
     }
 
     write(data) {
-        let actualData = decode(data);
-        this.data.set(actualData, this.offset);
-        this.offset += actualData.length;
+        this._data += data;
+        this.written += actualData.length;
     }
 
     get done() {
-        return this.offset == this.data.length;
+        return this.written == this._data.length;
+    }
+
+    get data() {
+        return decode(this._data);
     }
 };
 
@@ -88,7 +91,7 @@ window.addEventListener("drop", async event => {
     let tempFiles = {};
     for (let file of Array.from(event.dataTransfer.files)) {
         let data = (await new Blob([file]).arrayBuffer()).transfer();
-        tempFiles[file.name] = data;
+        tempFiles[file.name] = encode(data);
     }
     files = tempFiles;
 
@@ -106,10 +109,10 @@ function sendData(files) {
         if (filesSent.includes(filename)) continue;
         filesSent.push(filename);
 
-        while (offset < data.byteLength) {
+        while (offset < data.length) {
             console.log("sending chunk from %s", offset);
             const slice = data.slice(offset, offset + length);
-            socket.send(`${filename}|${data.byteLength}|${encode(new Uint8Array(slice))}`);
+            socket.send(`${filename}|${data.byteLength}|${slice}`);
             offset += length;
         }
     }
