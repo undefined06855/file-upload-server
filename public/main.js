@@ -8,7 +8,7 @@ class PartialFile {
     }
 
     write(data) {
-        let actualData = data.split(",").map(string => parseInt(string));
+        let actualData = decode(data);
         this.data.set(actualData, this.offset);
         this.offset += actualData.length;
     }
@@ -109,7 +109,7 @@ function sendData(files) {
         while (offset < data.byteLength) {
             console.log("sending chunk from %s", offset);
             const slice = data.slice(offset, offset + length);
-            socket.send(`${filename}|${data.byteLength}|${new Uint8Array(slice).toString()}`);
+            socket.send(`${filename}|${data.byteLength}|${encode(new Uint8Array(slice))}`);
             offset += length;
         }
     }

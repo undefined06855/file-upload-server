@@ -16,9 +16,7 @@ const server = Bun.serve({
 
         "/": async req => {
             const files = [
-                "public/globals.js",
-                "public/receiver.js",
-                "public/host.js",
+                "public/base65536.js",
                 "public/main.js"
             ];
 
