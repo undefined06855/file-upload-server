@@ -8,8 +8,9 @@ class PartialFile {
     }
 
     write(data) {
-        this.data.set(new TextEncoder().encode(data), this.written);
-        this.written += actualData.length;
+        this.data.set(data, this.written);
+        this.written += data.size;
+        console.log(data.size, this.written);
     }
 
     get done() {
@@ -19,6 +20,10 @@ class PartialFile {
 
 /** @type {Record<string, PartialFile>} */
 let files = {};
+
+let currentFileStage = 0;
+let currentFileName = "";
+let currentFileLength = 0;
 
 socket.addEventListener("message", event => {
     let text = event.data;
@@ -35,26 +40,46 @@ socket.addEventListener("message", event => {
         } break;
 
         default: {
-            // file data
-            let [name, length, ...data] = text.split("|");
-            console.log("receive file data chunk %s (len: %s)", name, length);
+            if (currentFileStage == 0) {
+                // getting name
+                currentFileName = event.data.toString();
+                console.log(currentFileName);
 
-            console.log(name in files);
+                currentFileStage++;
 
-            if (!(name in files)) {
-                files[name] = new PartialFile(name, length);
+                return;
             }
 
-            files[name].write(data);
+            if (currentFileStage == 1) {
+                // getting length
+                currentFileLength = parseInt(event.data.toString());
+                console.log(currentFileLength);
 
-            if (files[name].done) {
-                console.log("file %s done", name);
+                currentFileStage++;
 
-                let anchor = document.createElement("a");
-                anchor.href = URL.createObjectURL(new Blob([ files[name].data ]));
-                anchor.download = name;
-                anchor.click();
-                URL.revokeObjectURL(anchor.href);
+                return;
+            }
+
+            if (currentFileStage == 2) {
+                // getting data
+
+                if (!(currentFileName in files)) {
+                    files[currentFileName] = new PartialFile(currentFileName, currentFileLength);
+                }
+                
+                files[currentFileName].write(event.data);
+    
+                if (files[currentFileName].done) {
+                    console.log("file %s done", currentFileName);
+    
+                    let anchor = document.createElement("a");
+                    anchor.href = URL.createObjectURL(new Blob([ files[currentFileName].data ]));
+                    anchor.download = currentFileName;
+                    anchor.click();
+                    URL.revokeObjectURL(anchor.href);
+    
+                    currentFileStage = 0;
+                }
             }
         }
     }
@@ -76,8 +101,10 @@ window.addEventListener("drop", async event => {
     /** @type {Record<string, ArrayBuffer} */
     let files = {};
 
+    let filesReady = false;
+
     socket.addEventListener("open", async () => {
-        sendData(files);
+        if (filesReady) sendData(files);
     });
 
     // we cant just use event.dataTransfer.files in the callback because it just
@@ -90,25 +117,27 @@ window.addEventListener("drop", async event => {
         tempFiles[file.name] = data;
     }
     files = tempFiles;
+    filesReady = true;
 
-    sendData(files);
+    if (socket.readyState == WebSocket.OPEN) {
+        sendData(files);
+    }
 });
 
-let filesSent = [];
-
+/** @param {Record<string, ArrayBuffer>} files */
 function sendData(files) {
     console.log(files);
     for (let [filename, data] of Object.entries(files)) {
         let offset = 0;
         let length = 5e6; // 5MB at a time
 
-        if (filesSent.includes(filename)) continue;
-        filesSent.push(filename);
+        socket.send(filename);
+        socket.send(data.byteLength);
 
-        while (offset < data.length) {
+        while (offset < data.byteLength) {
             console.log("sending chunk from %s", offset);
             const slice = data.slice(offset, offset + length);
-            socket.send(`${filename}|${data.byteLength}|${new TextDecoder().decode(slice)}`);
+            socket.send(slice);
             offset += length;
         }
     }

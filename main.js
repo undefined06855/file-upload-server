@@ -16,7 +16,7 @@ const server = Bun.serve({
 
         "/": async req => {
             const files = [
-                "public/base65536.js",
+                // "public/base65536.js",
                 "public/main.js"
             ];
 
@@ -97,3 +97,5 @@ const server = Bun.serve({
 
     port: 2002
 });
+
+console.log("server up");
