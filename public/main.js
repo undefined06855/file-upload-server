@@ -129,7 +129,7 @@ function sendData(files) {
     console.log(files);
     for (let [filename, data] of Object.entries(files)) {
         let offset = 0;
-        let length = 5e6; // 5MB at a time
+        let length = 1e7; // 10MB at a time
 
         socket.send(filename);
         socket.send(data.byteLength);
